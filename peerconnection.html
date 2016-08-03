@@ -1,0 +1,107 @@
+<html>
+
+<head>
+
+<script src="/socket.io-client/socket.io.js"></script>
+<script src="/webrtc-adapter/out/adapter.js"> </script> 
+
+
+
+<script>
+
+var socket = io();
+
+navigator.getUserMedia  = navigator.getUserMedia ||
+                          navigator.webkitGetUserMedia ||
+                          navigator.mozGetUserMedia ||
+                          navigator.msGetUserMedia;
+
+
+
+
+
+
+var pc;
+var configuration = {
+    iceServers: [
+        {urls: "stun:23.21.150.121"},
+        {urls: "stun:stun.l.google.com:19302"},
+        {urls: "turn:numb.viagenie.ca", credential: "webrtcdemo", username: "louis%40mozilla.com"}
+    ]
+}
+
+
+
+pc = new RTCPeerConnection(configuration);
+
+pc.onicecandidate = function (e) {
+    // candidate exists in e.candidate
+    if (!e.candidate) return;
+    socket.emit("icecandidate", JSON.stringify(e.candidate));
+    console.log("candidate");
+};
+
+ var errorHandler = function (err) {
+    console.error(err);
+};
+
+
+
+
+
+var options = {
+    offerToReceiveAudio: false,
+    offerToReceiveVideo: true
+};
+
+
+
+  socket.on('answer', function(answer){
+  	console.log("got answer")
+  	offer = new RTCSessionDescription(JSON.parse(answer))
+    pc.setRemoteDescription(offer);
+  });
+
+  var errorCallback = function(e) {
+    console.log('Reeeejected!', e);
+  };
+
+    // Not showing vendor prefixes.
+  navigator.getUserMedia({video: true, audio: false}, function(localMediaStream) {
+    var video = document.querySelector('video');
+    video.src = window.URL.createObjectURL(localMediaStream);
+    pc.addStream(localMediaStream); 
+    console.log("did it")
+
+    pc.createOffer(function (offer) {
+	    pc.setLocalDescription(offer, function() {
+	        socket.emit("offer", JSON.stringify(pc.localDescription));
+	        console.log("made offer")
+	    }, errorHandler);
+	}, errorHandler, options);
+
+    // Note: onloadedmetadata doesn't fire in Chrome when using it with getUserMedia.
+    // See crbug.com/110938.
+    video.onloadedmetadata = function(e) {
+      // Ready to go. Do some stuff.
+    };
+  }, errorCallback);
+
+
+
+
+
+
+</script>
+
+
+</head>
+
+<body>
+
+<video autoplay></video>
+
+</body>
+
+
+</html>

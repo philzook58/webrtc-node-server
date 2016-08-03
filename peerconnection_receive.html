@@ -1,0 +1,64 @@
+<html>
+
+<head>
+
+<script src="/socket.io-client/socket.io.js"></script>
+<script src="/webrtc-adapter/out/adapter.js"> </script> 
+
+
+
+<script>
+
+var socket = io();
+
+var pc;
+var configuration = {
+    iceServers: [
+        {urls: "stun:23.21.150.121"},
+        {urls: "stun:stun.l.google.com:19302"},
+        {urls: "turn:numb.viagenie.ca", credential: "webrtcdemo", username: "louis%40mozilla.com"}
+    ]
+}
+
+ var errorHandler = function (err) {
+    console.error(err);
+};
+
+pc = new RTCPeerConnection(configuration);
+
+pc.onaddstream = function (evt) {
+        var video = document.querySelector('video');
+        video.src = URL.createObjectURL(evt.stream);
+    };
+
+socket.on("offer", function (offer) {
+  console.log("got offer")
+    offer = new RTCSessionDescription(JSON.parse(offer))
+    pc.setRemoteDescription(offer);
+
+    pc.createAnswer(function (answer) {
+        pc.setLocalDescription(answer, function() {
+            socket.emit("answer", JSON.stringify(pc.localDescription));
+        }, errorHandler);
+    }, errorHandler);
+});
+
+ 
+ socket.on("icecandidate", function(candidate){
+
+    pc.addIceCandidate(new RTCIceCandidate(JSON.parse(candidate)));
+});
+
+</script>
+
+
+</head>
+
+<body>
+
+<video autoplay></video>
+
+</body>
+
+
+</html>
